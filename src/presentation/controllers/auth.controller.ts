@@ -1,13 +1,27 @@
 import { Controller, Post, Body, Headers, UnauthorizedException, Get, Ip, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { AuthService } from '../../application/services/auth.service';
-import { LoginDto, RefreshTokenDto, AuthResponseDto } from '../dto/auth.dto';
+import { LoginDto, RegisterDto, RefreshTokenDto, AuthResponseDto } from '../dto/auth.dto';
 import type { Request } from 'express';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
+
+  @Post('register')
+  @ApiOperation({ summary: 'Criar nova conta' })
+  @ApiBody({ type: RegisterDto })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'Conta criada com sucesso',
+    type: AuthResponseDto 
+  })
+  @ApiResponse({ status: 400, description: 'Dados inválidos' })
+  @ApiResponse({ status: 409, description: 'Email já cadastrado' })
+  async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
+    return this.authService.register(registerDto);
+  }
 
   @Post('login')
   @ApiOperation({ summary: 'Fazer login' })
