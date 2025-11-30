@@ -1,10 +1,8 @@
-import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from '../../application/services/auth.service';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  private readonly logger = new Logger(JwtAuthGuard.name);
-
   constructor(private readonly authService: AuthService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -24,7 +22,6 @@ export class JwtAuthGuard implements CanActivate {
         throw new UnauthorizedException('Usuário não encontrado');
       }
 
-      this.logger.debug(`User authenticated: ${user.email} (${user.name})`);
       request.user = user;
       return true;
     } catch (error) {

@@ -1,6 +1,10 @@
--- Tabela de logs de auditoria para rastreamento de ações dos usuários
+-- ============================================
+-- MIGRATION V014: CREATE TABLE AUDIT_LOGS
+-- ============================================
+-- Logs de auditoria para rastreamento de ações
+-- Depende de: users (V003)
 -- Retenção recomendada: 1 ano (365 dias)
--- Executar limpeza periódica via job ou endpoint admin
+-- ============================================
 
 CREATE TABLE IF NOT EXISTS audit_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -12,7 +16,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   
   -- Detalhes da ação
   action TEXT NOT NULL CHECK (action IN ('CREATE', 'UPDATE', 'DELETE', 'LOGIN')),
-  entity_type TEXT, -- 'system', 'tank', 'user', 'feeding_record', etc.
+  entity_type TEXT,
   entity_id UUID,
   
   -- Dados antes e depois (para UPDATE e DELETE)
@@ -29,14 +33,16 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Índices para consultas frequentes
+-- Índices
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_entity ON audit_logs(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC);
-
--- Índice composto para filtros comuns
 CREATE INDEX IF NOT EXISTS idx_audit_logs_filters ON audit_logs(created_at DESC, action, entity_type);
 
 -- Comentário sobre política de retenção
-COMMENT ON TABLE audit_logs IS 'Logs de auditoria de ações dos usuários. Política de retenção: 1 ano. Executar DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL ''1 year'' periodicamente.';
+COMMENT ON TABLE audit_logs IS 'Logs de auditoria. Política de retenção: 1 ano. Execute DELETE FROM audit_logs WHERE created_at < NOW() - INTERVAL ''1 year'' periodicamente.';
+
+-- ============================================
+-- FIM DA MIGRATION V014
+-- ============================================
