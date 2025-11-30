@@ -9,6 +9,7 @@ import { ChecklistModule } from './modules/checklist.module';
 import { SystemsModule } from './modules/systems.module';
 import { FeedingModule } from './modules/feeding.module';
 import { WaterParametersModule } from './modules/water-parameters.module';
+import { AuditModule } from './modules/audit.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { WaterParametersModule } from './modules/water-parameters.module';
     SystemsModule,
     FeedingModule,
     WaterParametersModule,
+    AuditModule,
   ],
   controllers: [AppController],
   providers: [AppService],

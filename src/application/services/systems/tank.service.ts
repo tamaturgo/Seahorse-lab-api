@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import type { ITankRepository, ISystemRepository } from '../../../domain/repositories';
 import { Tank } from '../../../domain/entities/systems';
-import { CreateTankDto, UpdateTankDto } from '../../../presentation/dto/systems';
+import { EntityNotFoundException } from '../../../domain/exceptions';
+import type { CreateTankInput, UpdateTankInput } from '../../dto/systems';
 
 @Injectable()
 export class TankService {
@@ -19,7 +20,7 @@ export class TankService {
   async findById(id: string): Promise<Tank> {
     const tank = await this.tankRepository.findById(id);
     if (!tank) {
-      throw new NotFoundException(`Tank with ID ${id} not found`);
+      throw new EntityNotFoundException('Tank', id);
     }
     return tank;
   }
@@ -28,38 +29,48 @@ export class TankService {
     return this.tankRepository.findBySystemId(systemId);
   }
 
-  async create(createTankDto: CreateTankDto): Promise<Tank> {
+  async create(input: CreateTankInput): Promise<Tank> {
     // Verifica se o sistema existe
-    const system = await this.systemRepository.findById(createTankDto.systemId);
+    const system = await this.systemRepository.findById(input.systemId);
     if (!system) {
-      throw new NotFoundException(`System with ID ${createTankDto.systemId} not found`);
+      throw new EntityNotFoundException('System', input.systemId);
     }
     
     const tankData = {
-      name: createTankDto.name,
-      systemId: createTankDto.systemId,
-      capacity: createTankDto.capacity,
-      animals: createTankDto.animals,
-      species: createTankDto.species || '',
-      status: createTankDto.status || 'active' as const,
-      observations: createTankDto.observations,
+      name: input.name,
+      systemId: input.systemId,
+      capacity: input.capacity ?? 0,
+      animals: input.animals ?? 0,
+      species: input.species || '',
+      status: input.status || 'active' as const,
+      observations: input.observations,
     };
     
     return this.tankRepository.create(tankData);
   }
 
-  async update(id: string, updateTankDto: UpdateTankDto): Promise<Tank> {
+  async update(id: string, input: UpdateTankInput): Promise<Tank> {
     await this.findById(id); // Verifica se existe
     
     // Se está alterando o sistema, verifica se o novo sistema existe
-    if (updateTankDto.systemId) {
-      const system = await this.systemRepository.findById(updateTankDto.systemId);
+    if (input.systemId) {
+      const system = await this.systemRepository.findById(input.systemId);
       if (!system) {
-        throw new NotFoundException(`System with ID ${updateTankDto.systemId} not found`);
+        throw new EntityNotFoundException('System', input.systemId);
       }
     }
     
-    return this.tankRepository.update(id, updateTankDto);
+    // Converter para Partial<Tank> compatível
+    const updateData: Partial<Tank> = {};
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.systemId !== undefined) updateData.systemId = input.systemId;
+    if (input.capacity !== undefined) updateData.capacity = input.capacity;
+    if (input.animals !== undefined) updateData.animals = input.animals;
+    if (input.species !== undefined) updateData.species = input.species;
+    if (input.status !== undefined) updateData.status = input.status;
+    if (input.observations !== undefined) updateData.observations = input.observations;
+    
+    return this.tankRepository.update(id, updateData);
   }
 
   async delete(id: string): Promise<void> {

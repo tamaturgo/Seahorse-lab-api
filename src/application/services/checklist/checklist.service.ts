@@ -1,6 +1,7 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import type { IChecklistTaskRepository } from '../../../domain/repositories/checklist';
 import { ChecklistTask } from '../../../domain/entities/checklist';
+import { EntityNotFoundException } from '../../../domain/exceptions';
 
 @Injectable()
 export class ChecklistService {
@@ -20,7 +21,7 @@ export class ChecklistService {
 
   async getTaskById(id: string): Promise<ChecklistTask> {
     const task = await this.taskRepository.findById(id);
-    if (!task) throw new NotFoundException(`Task with ID ${id} not found`);
+    if (!task) throw new EntityNotFoundException('Task', id);
     return task;
   }
 

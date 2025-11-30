@@ -1,14 +1,21 @@
-import { Injectable, Inject, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { IUserRepository } from '../../domain/repositories';
 import { User } from '../../domain/entities/user';
 import { RegisterDto, LoginDto, AuthResponseDto } from '../../presentation/dto/auth.dto';
+import { 
+  DuplicateEntityException, 
+  InvalidOperationException, 
+  UnauthorizedException 
+} from '../../domain/exceptions';
+import { AuditLogService } from './audit/audit-log.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @Inject('SUPABASE_CLIENT') private readonly supabase: SupabaseClient,
     @Inject('IUserRepository') private readonly userRepository: IUserRepository,
+    @Inject(AuditLogService) private readonly auditLogService: AuditLogService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
@@ -17,7 +24,7 @@ export class AuthService {
     // Verificar se o usuário já existe
     const existingUser = await this.userRepository.findByEmail(email);
     if (existingUser) {
-      throw new ConflictException('Email já está em uso');
+      throw new DuplicateEntityException('Usuário', 'email', email);
     }
 
     // Criar usuário no Supabase Auth
@@ -33,11 +40,11 @@ export class AuthService {
     });
 
     if (authError) {
-      throw new BadRequestException(authError.message);
+      throw new InvalidOperationException(authError.message);
     }
 
     if (!authData.user) {
-      throw new BadRequestException('Falha ao criar usuário');
+      throw new InvalidOperationException('Falha ao criar usuário');
     }
 
     // Criar registro do usuário na tabela users
@@ -59,7 +66,7 @@ export class AuthService {
     };
   }
 
-  async login(loginDto: LoginDto): Promise<AuthResponseDto> {
+  async login(loginDto: LoginDto, ipAddress?: string, userAgent?: string): Promise<AuthResponseDto> {
     const { email, password } = loginDto;
 
     // Autenticar com Supabase
@@ -82,6 +89,16 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Usuário não encontrado');
     }
+
+    // Registrar log de login
+    await this.auditLogService.log({
+      user,
+      action: 'LOGIN',
+      route: '/auth/login',
+      method: 'POST',
+      ipAddress,
+      userAgent,
+    });
 
     return {
       access_token: authData.session.access_token,

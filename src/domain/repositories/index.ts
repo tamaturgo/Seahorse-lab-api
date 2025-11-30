@@ -1,9 +1,10 @@
 import { User } from '../entities/user';
 import { Tank, System } from '../entities/systems';
-import { FeedingRecord } from '../entities/feeding';
+import { FeedingRecord, FoodType } from '../entities/feeding';
 import { WaterParameters } from '../entities/systems';
 import { Animal, MedicalRecord, Medicine } from '../entities/medicine';
 import { StockItem } from '../entities/stock';
+import { AuditLog, AuditAction } from '../entities/audit';
 
 export interface IUserRepository {
   findAll(): Promise<User[]>;
@@ -82,4 +83,44 @@ export interface IStockItemRepository {
   create(item: Omit<StockItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<StockItem>;
   update(id: string, item: Partial<StockItem>): Promise<StockItem>;
   delete(id: string): Promise<void>;
+}
+
+export interface IFoodTypeRepository {
+  create(foodType: Partial<FoodType>): Promise<FoodType>;
+  findAll(includeInactive?: boolean): Promise<FoodType[]>;
+  findById(id: string): Promise<FoodType | null>;
+  findByCode(code: string): Promise<FoodType | null>;
+  update(id: string, foodType: Partial<FoodType>): Promise<FoodType>;
+  delete(id: string): Promise<void>;
+}
+
+// Filtros para consulta de logs de auditoria
+export interface AuditLogFilters {
+  startDate?: Date;
+  endDate?: Date;
+  userId?: string;
+  action?: AuditAction;
+  entityType?: string;
+  page?: number;
+  limit?: number;
+}
+
+// Resposta paginada de logs de auditoria
+export interface PaginatedAuditLogs {
+  data: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface IAuditLogRepository {
+  create(log: Omit<AuditLog, 'id' | 'createdAt'>): Promise<AuditLog>;
+  findAll(filters?: AuditLogFilters): Promise<PaginatedAuditLogs>;
+  findById(id: string): Promise<AuditLog | null>;
+  findByUserId(userId: string, filters?: AuditLogFilters): Promise<PaginatedAuditLogs>;
+  findByEntityId(entityType: string, entityId: string): Promise<AuditLog[]>;
+  deleteOlderThan(date: Date): Promise<number>;
+  getDistinctEntityTypes(): Promise<string[]>;
+  getDistinctUsers(): Promise<{ id: string; name: string; email: string }[]>;
 }

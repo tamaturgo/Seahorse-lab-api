@@ -28,6 +28,7 @@ export class WaterParameterRepository implements IWaterParameterRepository {
         ammonia: waterParameter.ammonia,
         nitrite: waterParameter.nitrite,
         nitrate: waterParameter.nitrate,
+        salinity: waterParameter.salinity,
         date: waterParameter.measuredAt || new Date().toISOString(),
         user_id: waterParameter.userId,
       })
@@ -40,25 +41,28 @@ export class WaterParameterRepository implements IWaterParameterRepository {
   }
 
   async findAll(filters?: { systemId?: string; tankId?: string; startDate?: Date; endDate?: Date }): Promise<WaterParameter[]> {
-    let query = this.supabase.from('water_parameters').select('*');
-
-    // System ID não existe na tabela, ignorar este filtro
+    let query = this.supabase.from('water_parameters').select(`
+      *,
+      tanks!inner(system_id)
+    `);
     
     if (filters?.tankId) {
       query = query.eq('tank_id', filters.tankId);
     }
 
-    if (filters?.startDate && filters?.endDate) {
-      // Buscar registros criados hoje (últimas 24h) usando created_at em vez de date
-      const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-      
-      query = query.gte('created_at', startOfDay.toISOString());
-      query = query.lte('created_at', endOfDay.toISOString());
+    if (filters?.systemId) {
+      query = query.eq('tanks.system_id', filters.systemId);
     }
 
-    const { data, error} = await query.order('date', { ascending: false });
+    if (filters?.startDate) {
+      query = query.gte('created_at', filters.startDate.toISOString());
+    }
+
+    if (filters?.endDate) {
+      query = query.lte('created_at', filters.endDate.toISOString());
+    }
+
+    const { data, error} = await query.order('created_at', { ascending: false });
 
     if (error) throw new Error(`Erro ao buscar registros de parâmetros: ${error.message}`);
 
@@ -81,7 +85,20 @@ export class WaterParameterRepository implements IWaterParameterRepository {
   }
 
   async findBySystemId(systemId: string): Promise<WaterParameter[]> {
-    return this.findAll({ systemId });
+    // Buscar parâmetros dos tanques do sistema com join
+    const { data, error } = await this.supabase
+      .from('water_parameters')
+      .select(`
+        *,
+        tanks!inner(system_id)
+      `)
+      .eq('tanks.system_id', systemId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+
+    if (error) throw new Error(`Erro ao buscar registros de parâmetros: ${error.message}`);
+
+    return (data || []).map(this.mapToEntity);
   }
 
   async findByTankId(tankId: string): Promise<WaterParameter[]> {
@@ -92,14 +109,14 @@ export class WaterParameterRepository implements IWaterParameterRepository {
     return {
       id: data.id,
       tankId: data.tank_id,
-      systemId: undefined, // Coluna não existe na tabela
+      systemId: data.tanks?.system_id || undefined,
       pH: parseFloat(data.ph),
       temperature: parseFloat(data.temperature),
       ammonia: parseFloat(data.ammonia),
       nitrite: parseFloat(data.nitrite),
       nitrate: parseFloat(data.nitrate),
       salinity: data.salinity ? parseFloat(data.salinity) : undefined,
-      measuredAt: new Date(data.date || data.measured_at),
+      measuredAt: new Date(data.date),
       userId: data.user_id,
       notes: data.notes,
       createdAt: new Date(data.created_at),

@@ -1,6 +1,7 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import type { IWaterParameterRepository } from '../../../infrastructure/repositories/water-parameter.repository';
 import { WaterParameter } from '../../../domain/entities/water-parameters';
+import { EntityNotFoundException } from '../../../domain/exceptions';
 import { CreateWaterParameterDto, WaterParameterResponseDto } from '../../../presentation/dto/water-parameters';
 
 @Injectable()
@@ -44,7 +45,7 @@ export class WaterParameterService {
   async findById(id: string): Promise<WaterParameterResponseDto> {
     const record = await this.waterParameterRepository.findById(id);
     if (!record) {
-      throw new NotFoundException('Registro de parâmetros não encontrado');
+      throw new EntityNotFoundException('Parâmetros de água', id);
     }
     return this.toResponseDto(record);
   }

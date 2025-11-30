@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { DomainExceptionFilter } from './presentation/filters/domain-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,6 +13,9 @@ async function bootstrap() {
     forbidNonWhitelisted: true,
     transform: true,
   }));
+
+  // Global exception filter for domain exceptions
+  app.useGlobalFilters(new DomainExceptionFilter());
 
   // CORS configuration
   app.enableCors({
@@ -47,6 +51,7 @@ async function bootstrap() {
     .addTag('water-parameters', 'Parâmetros da água')
     .addTag('medicine', 'Saúde e medicamentos')
     .addTag('stock', 'Controle de estoque')
+    .addTag('audit-logs', 'Logs de auditoria (apenas admin)')
     .build();
   
   const document = SwaggerModule.createDocument(app, config, {
@@ -62,7 +67,7 @@ async function bootstrap() {
   });
 
   await app.listen(process.env.PORT ?? 3000);
-  console.log(`🚀 Application is running on: http://localhost:${process.env.PORT ?? 3000}`);
-  console.log(`📚 Swagger documentation: http://localhost:${process.env.PORT ?? 3000}/api`);
+  console.log(`Application is running on: http://localhost:${process.env.PORT ?? 3000}`);
+  console.log(`Swagger documentation: http://localhost:${process.env.PORT ?? 3000}/api`);
 }
 bootstrap();

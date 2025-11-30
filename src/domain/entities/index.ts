@@ -129,3 +129,6 @@ export class ChecklistParameter {
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Re-export audit entities
+export * from './audit';

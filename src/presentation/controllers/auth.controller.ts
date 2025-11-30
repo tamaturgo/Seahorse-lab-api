@@ -1,26 +1,13 @@
-import { Controller, Post, Body, Headers, UnauthorizedException, Get } from '@nestjs/common';
+import { Controller, Post, Body, Headers, UnauthorizedException, Get, Ip, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { AuthService } from '../../application/services/auth.service';
-import { RegisterDto, LoginDto, RefreshTokenDto, AuthResponseDto } from '../dto/auth.dto';
+import { LoginDto, RefreshTokenDto, AuthResponseDto } from '../dto/auth.dto';
+import type { Request } from 'express';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  @Post('register')
-  @ApiOperation({ summary: 'Registrar novo usuário' })
-  @ApiBody({ type: RegisterDto })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Usuário criado com sucesso',
-    type: AuthResponseDto 
-  })
-  @ApiResponse({ status: 409, description: 'Email já está em uso' })
-  @ApiResponse({ status: 400, description: 'Dados inválidos' })
-  async register(@Body() registerDto: RegisterDto): Promise<AuthResponseDto> {
-    return this.authService.register(registerDto);
-  }
 
   @Post('login')
   @ApiOperation({ summary: 'Fazer login' })
@@ -31,8 +18,18 @@ export class AuthController {
     type: AuthResponseDto 
   })
   @ApiResponse({ status: 401, description: 'Email ou senha inválidos' })
-  async login(@Body() loginDto: LoginDto): Promise<AuthResponseDto> {
-    return this.authService.login(loginDto);
+  async login(
+    @Body() loginDto: LoginDto,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ): Promise<AuthResponseDto> {
+    const userAgent = req.headers['user-agent'];
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const ipAddress = forwardedFor 
+      ? (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor.split(',')[0].trim())
+      : ip;
+    
+    return this.authService.login(loginDto, ipAddress, userAgent);
   }
 
   @Post('refresh')

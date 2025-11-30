@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../../../infrastructure/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../infrastructure/decorators/current-user.decorator';
 import { FeedingRecordService } from '../../../application/services/feeding/feeding-record.service';
 import { CreateFeedingRecordDto, FeedingRecordResponseDto } from '../../dto/feeding';
+import type { NextFeedingOutput } from '../../../application/dto/feeding';
 
 @ApiTags('feeding')
 @Controller('feeding')
@@ -19,6 +20,12 @@ export class FeedingRecordController {
     @Body() createDto: CreateFeedingRecordDto,
   ): Promise<FeedingRecordResponseDto> {
     return this.feedingRecordService.create(user.id, createDto);
+  }
+
+  @Get('next')
+  @ApiOperation({ summary: 'Obter informações da próxima alimentação' })
+  async getNextFeeding(): Promise<NextFeedingOutput> {
+    return this.feedingRecordService.getNextFeeding();
   }
 
   @Get('records')

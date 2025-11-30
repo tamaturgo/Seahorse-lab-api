@@ -19,3 +19,22 @@ export class FoodType {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export class FeedingSchedule {
+  id: string;
+  tankId: string;
+  intervalHours: number; // Intervalo entre alimentações em horas
+  startTime: string; // Horário de início (ex: "08:00:00")
+  isActive: boolean;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export class DefaultFeedingSettings {
+  id: string;
+  intervalHours: number;
+  startTime: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
