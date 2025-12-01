@@ -8,8 +8,13 @@ export const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 export const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Missing Supabase environment variables');
+  throw new Error('Missing Supabase environment variables (SUPABASE_URL, SUPABASE_ANON_KEY)');
 }
+
+if (!SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable. This is required for backend operations.');
+}
+
 
 // Cliente para uso geral (respeitando RLS)
 export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -17,7 +22,7 @@ export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON
 // Cliente administrativo (ignora RLS) - usar no backend para operações internas
 export const supabaseAdmin: SupabaseClient = createClient(
   SUPABASE_URL, 
-  SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY,
   {
     auth: {
       autoRefreshToken: false,
