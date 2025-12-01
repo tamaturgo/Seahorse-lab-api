@@ -35,10 +35,15 @@ export class UserRepository implements IUserRepository {
     return data || null;
   }
 
-  async create(user: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> {
+  async create(user: Omit<User, 'createdAt' | 'updatedAt'>): Promise<User> {
     const { data, error } = await this.supabase
       .from('users')
-      .insert(user)
+      .insert({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      })
       .select()
       .single();
     if (error) throw error;

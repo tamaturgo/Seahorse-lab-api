@@ -59,8 +59,9 @@ export class UserService {
       throw new InvalidOperationException('Falha ao criar usuário no sistema de autenticação');
     }
 
-    // Criar registro do usuário na tabela users
+    // Criar registro do usuário na tabela users com o mesmo ID do Supabase Auth
     const user = await this.userRepository.create({
+      id: authData.user.id,
       name,
       email,
       role,
