@@ -17,6 +17,46 @@ export class CreateChecklistTaskDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean = true;
+
+  @ApiPropertyOptional({ description: 'ID da tarefa pai (subtarefa nível único)' })
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+
+  @ApiPropertyOptional({ description: 'Executar na segunda-feira', default: true })
+  @IsOptional()
+  @IsBoolean()
+  monday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar na terça-feira', default: true })
+  @IsOptional()
+  @IsBoolean()
+  tuesday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar na quarta-feira', default: true })
+  @IsOptional()
+  @IsBoolean()
+  wednesday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar na quinta-feira', default: true })
+  @IsOptional()
+  @IsBoolean()
+  thursday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar na sexta-feira', default: true })
+  @IsOptional()
+  @IsBoolean()
+  friday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar no sábado', default: true })
+  @IsOptional()
+  @IsBoolean()
+  saturday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar no domingo', default: true })
+  @IsOptional()
+  @IsBoolean()
+  sunday?: boolean;
 }
 
 export class UpdateChecklistTaskDto {
@@ -35,6 +75,46 @@ export class UpdateChecklistTaskDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ description: 'ID da tarefa pai (subtarefa nível único)' })
+  @IsOptional()
+  @IsString()
+  parentId?: string;
+
+  @ApiPropertyOptional({ description: 'Executar na segunda-feira' })
+  @IsOptional()
+  @IsBoolean()
+  monday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar na terça-feira' })
+  @IsOptional()
+  @IsBoolean()
+  tuesday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar na quarta-feira' })
+  @IsOptional()
+  @IsBoolean()
+  wednesday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar na quinta-feira' })
+  @IsOptional()
+  @IsBoolean()
+  thursday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar na sexta-feira' })
+  @IsOptional()
+  @IsBoolean()
+  friday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar no sábado' })
+  @IsOptional()
+  @IsBoolean()
+  saturday?: boolean;
+
+  @ApiPropertyOptional({ description: 'Executar no domingo' })
+  @IsOptional()
+  @IsBoolean()
+  sunday?: boolean;
 }
 
 export class ReorderTasksDto {

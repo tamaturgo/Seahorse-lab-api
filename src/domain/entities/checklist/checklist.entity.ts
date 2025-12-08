@@ -6,6 +6,14 @@ export class ChecklistTask {
   name: string;
   order: number;
   isActive: boolean;
+  parentId?: string | null;
+  monday?: boolean;
+  tuesday?: boolean;
+  wednesday?: boolean;
+  thursday?: boolean;
+  friday?: boolean;
+  saturday?: boolean;
+  sunday?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

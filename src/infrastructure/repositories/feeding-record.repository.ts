@@ -22,8 +22,10 @@ export class FeedingRecordRepository implements IFeedingRecordRepository {
       .from('feeding_records')
       .insert({
         tank_id: feedingRecord.tankId,
+        food_type_id: feedingRecord.foodTypeId,
         food: feedingRecord.food,
         quantity: feedingRecord.quantity,
+        unit: feedingRecord.unit || 'ml',
         date: feedingRecord.date || new Date().toISOString(),
         user_id: feedingRecord.userId,
       })
@@ -83,8 +85,10 @@ export class FeedingRecordRepository implements IFeedingRecordRepository {
     return {
       id: data.id,
       tankId: data.tank_id,
+      foodTypeId: data.food_type_id ?? undefined,
       food: data.food,
-      quantity: data.quantity,
+      quantity: Number(data.quantity),
+      unit: (data.unit ?? 'ml') as 'ml' | 'g' | 'und',
       date: new Date(data.date),
       userId: data.user_id,
       createdAt: new Date(data.created_at),

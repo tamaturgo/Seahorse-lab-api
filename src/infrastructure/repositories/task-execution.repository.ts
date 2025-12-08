@@ -115,7 +115,7 @@ export class TaskExecutionRepository {
     });
   }
 
-  async toggle(taskId: string, userId: string, date: string): Promise<TaskExecution> {
+  async toggle(taskId: string, userId: string, date: string, notes?: string, completed?: boolean): Promise<TaskExecution> {
     // Verificar se já existe
     const { data: existing } = await this.supabase
       .from('daily_checklist_task_executions')
@@ -126,15 +126,17 @@ export class TaskExecutionRepository {
       .single();
 
     if (existing) {
-      // Toggle completed
-      return this.update(existing.id, { completed: !existing.completed });
+      // Toggle or force value; attach notes if provided
+      const nextCompleted = completed !== undefined ? completed : !existing.completed;
+      return this.update(existing.id, { completed: nextCompleted, notes });
     } else {
       // Create new
       return this.create({ 
         taskId, 
         userId, 
         date: new Date(date), 
-        completed: true 
+        completed: completed ?? true,
+        notes,
       });
     }
   }

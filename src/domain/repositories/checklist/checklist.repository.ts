@@ -2,7 +2,7 @@ import { ChecklistTask, ChecklistParameter } from '../../entities/checklist';
 
 export interface IChecklistTaskRepository {
   findAll(): Promise<ChecklistTask[]>;
-  findAllActive(): Promise<ChecklistTask[]>;
+  findAllActive(day?: string): Promise<ChecklistTask[]>;
   findById(id: string): Promise<ChecklistTask | null>;
   create(task: Omit<ChecklistTask, 'id' | 'createdAt' | 'updatedAt'>): Promise<ChecklistTask>;
   update(id: string, task: Partial<ChecklistTask>): Promise<ChecklistTask>;

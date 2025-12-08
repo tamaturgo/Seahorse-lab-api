@@ -23,13 +23,14 @@ export class WaterParameterRepository implements IWaterParameterRepository {
       .from('water_parameters')
       .insert({
         tank_id: waterParameter.tankId,
+        system_id: waterParameter.systemId,
         ph: waterParameter.pH,
         temperature: waterParameter.temperature,
         ammonia: waterParameter.ammonia,
         nitrite: waterParameter.nitrite,
         nitrate: waterParameter.nitrate,
         salinity: waterParameter.salinity,
-        date: waterParameter.measuredAt || new Date().toISOString(),
+        measured_at: (waterParameter.measuredAt || new Date()).toISOString(),
         user_id: waterParameter.userId,
       })
       .select()
@@ -55,14 +56,14 @@ export class WaterParameterRepository implements IWaterParameterRepository {
     }
 
     if (filters?.startDate) {
-      query = query.gte('created_at', filters.startDate.toISOString());
+      query = query.gte('measured_at', filters.startDate.toISOString());
     }
 
     if (filters?.endDate) {
-      query = query.lte('created_at', filters.endDate.toISOString());
+      query = query.lte('measured_at', filters.endDate.toISOString());
     }
 
-    const { data, error} = await query.order('created_at', { ascending: false });
+    const { data, error} = await query.order('measured_at', { ascending: false });
 
     if (error) throw new Error(`Erro ao buscar registros de parâmetros: ${error.message}`);
 
@@ -93,7 +94,7 @@ export class WaterParameterRepository implements IWaterParameterRepository {
         tanks!inner(system_id)
       `)
       .eq('tanks.system_id', systemId)
-      .order('created_at', { ascending: false })
+      .order('measured_at', { ascending: false })
       .limit(10);
 
     if (error) throw new Error(`Erro ao buscar registros de parâmetros: ${error.message}`);
@@ -116,7 +117,7 @@ export class WaterParameterRepository implements IWaterParameterRepository {
       nitrite: parseFloat(data.nitrite),
       nitrate: parseFloat(data.nitrate),
       salinity: data.salinity ? parseFloat(data.salinity) : undefined,
-      measuredAt: new Date(data.date),
+      measuredAt: new Date(data.measured_at),
       userId: data.user_id,
       notes: data.notes,
       createdAt: new Date(data.created_at),

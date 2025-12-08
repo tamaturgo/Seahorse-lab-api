@@ -2,8 +2,10 @@
 export class FeedingRecord {
   id: string;
   tankId: string;
+  foodTypeId?: string;
   food: string;
   quantity: number;
+  unit: 'ml' | 'g' | 'und';
   date: Date;
   userId: string;
   createdAt: Date;

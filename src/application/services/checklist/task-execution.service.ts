@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { TaskExecutionRepository } from '../../../infrastructure/repositories/task-execution.repository';
 import { TaskExecution } from '../../../domain/entities/checklist/task-execution.entity';
 import { CreateTaskExecutionDto } from '../../../presentation/dto/checklist/task-execution.dto';
+import { ToggleTaskExecutionDto } from '../../../presentation/dto/checklist';
 
 @Injectable()
 export class TaskExecutionService {
@@ -19,9 +20,9 @@ export class TaskExecutionService {
     });
   }
 
-  async toggle(userId: string, taskId: string, date?: string): Promise<TaskExecution> {
-    const dateStr = date || new Date().toISOString().split('T')[0];
-    return this.taskExecutionRepository.toggle(taskId, userId, dateStr);
+  async toggle(userId: string, dto: ToggleTaskExecutionDto): Promise<TaskExecution> {
+    const dateStr = dto.date || new Date().toISOString().split('T')[0];
+    return this.taskExecutionRepository.toggle(dto.taskId, userId, dateStr, dto.notes, dto.completed);
   }
 
   async getByDate(date?: string): Promise<TaskExecution[]> {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 import { ChecklistService } from '../../../application/services/checklist';
 import {
@@ -23,8 +23,8 @@ export class ChecklistController {
   @Get('tasks/active')
   @ApiOperation({ summary: 'Listar tarefas ativas do checklist' })
   @ApiResponse({ status: 200, description: 'Lista de tarefas ativas retornada' })
-  async getActiveTasks() {
-    return this.checklistService.getActiveTasks();
+  async getActiveTasks(@Query('day') day?: string) {
+    return this.checklistService.getActiveTasks(day);
   }
 
   @Get('tasks/:id')

@@ -27,16 +27,20 @@ export interface FoodTypeOutput {
 
 export interface CreateFeedingRecordInput {
   tankId: string;
+  foodTypeId?: string;
   food: string;
   quantity: number;
+  unit?: 'ml' | 'g' | 'und';
   date?: Date | string;
 }
 
 export interface FeedingRecordOutput {
   id: string;
   tankId: string;
+  foodTypeId?: string;
   food: string;
   quantity: number;
+  unit: 'ml' | 'g' | 'und';
   date: Date;
   userId: string;
   createdAt: Date;
@@ -48,6 +52,7 @@ export interface NextFeedingOutput {
   nextFeedingTime: string;
   timeLeft: string;
   feedingIntervalHours: number;
+  tankId?: string;
 }
 
 // Feeding Schedule DTOs
@@ -105,3 +110,58 @@ export interface AllTanksNextFeedingOutput {
   tanks: TankNextFeedingOutput[];
   defaultSettings: DefaultFeedingSettingsOutput | null;
 }
+
+// Diets
+export interface DietItemInput {
+  foodTypeId: string;
+  quantity: number;
+  dayRangeStart?: number;
+  dayRangeEnd?: number;
+  sortOrder?: number;
+  notes?: string;
+}
+
+export interface CreateDietInput {
+  name: string;
+  phase: 'juvenil' | 'jovem' | 'adulto';
+  isActive?: boolean;
+  notes?: string;
+  items: DietItemInput[];
+}
+
+export interface UpdateDietInput {
+  name?: string;
+  phase?: 'juvenil' | 'jovem' | 'adulto';
+  isActive?: boolean;
+  notes?: string;
+  items?: DietItemInput[];
+}
+
+export interface DietItemOutput extends DietItemInput {
+  id: string;
+  dietId: string;
+  foodType?: {
+    id: string;
+    name: string;
+    unit: string;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DietOutput {
+  id: string;
+  tankId: string | null; // Pode ser null para templates
+  name: string;
+  phase: 'juvenil' | 'jovem' | 'adulto';
+  isActive: boolean;
+  startedAt: Date | null;
+  endedAt: Date | null;
+  notes?: string;
+  items: DietItemOutput[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Tank Diets
+export * from './tank-diet.dto';

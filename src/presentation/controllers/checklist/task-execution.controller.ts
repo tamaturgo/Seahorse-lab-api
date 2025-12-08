@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../../infrastructure/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../infrastructure/decorators/current-user.decorator';
 import { TaskExecutionService } from '../../../application/services/checklist/task-execution.service';
-import { CreateTaskExecutionDto, TaskExecutionResponseDto } from '../../dto/checklist/task-execution.dto';
+import { CreateTaskExecutionDto, TaskExecutionResponseDto, ToggleTaskExecutionDto } from '../../dto/checklist';
 
 @ApiTags('checklist')
 @Controller('checklist/task-executions')
@@ -25,10 +25,9 @@ export class TaskExecutionController {
   @ApiOperation({ summary: 'Alternar status de tarefa (completado/não completado)' })
   async toggle(
     @CurrentUser() user: any,
-    @Query('taskId') taskId: string,
-    @Query('date') date?: string,
+    @Body() dto: ToggleTaskExecutionDto,
   ): Promise<TaskExecutionResponseDto> {
-    return this.taskExecutionService.toggle(user.id, taskId, date);
+    return this.taskExecutionService.toggle(user.id, dto);
   }
 
   @Get()

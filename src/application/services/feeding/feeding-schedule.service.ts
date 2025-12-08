@@ -307,6 +307,7 @@ export class FeedingScheduleService {
       tankId: record.tankId,
       food: record.food,
       quantity: record.quantity,
+      unit: record.unit || 'ml',
       date: record.date,
       userId: record.userId,
       createdAt: record.createdAt,

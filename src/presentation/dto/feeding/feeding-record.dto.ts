@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional, IsDateString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsOptional, IsDateString, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateFeedingRecordDto {
@@ -7,15 +7,25 @@ export class CreateFeedingRecordDto {
   @IsString()
   tankId: string;
 
-  @ApiProperty({ description: 'Tipo de alimento' })
-  @IsNotEmpty()
+  @ApiProperty({ description: 'ID do tipo de alimento', required: false })
+  @IsOptional()
   @IsString()
-  food: string;
+  foodTypeId?: string;
+
+  @ApiProperty({ description: 'Tipo de alimento (texto livre se não usar foodTypeId)' })
+  @IsOptional()
+  @IsString()
+  food?: string;
 
   @ApiProperty({ description: 'Quantidade fornecida' })
   @IsNotEmpty()
   @IsNumber()
   quantity: number;
+
+  @ApiProperty({ description: 'Unidade da quantidade', enum: ['ml', 'g', 'und'], default: 'ml' })
+  @IsOptional()
+  @IsEnum(['ml', 'g', 'und'])
+  unit?: 'ml' | 'g' | 'und';
 
   @ApiProperty({ description: 'Data e hora da alimentação', required: false })
   @IsOptional()
@@ -26,8 +36,10 @@ export class CreateFeedingRecordDto {
 export class FeedingRecordResponseDto {
   id: string;
   tankId: string;
+  foodTypeId?: string;
   food: string;
   quantity: number;
+  unit: 'ml' | 'g' | 'und';
   date: Date;
   userId: string;
   createdAt: Date;

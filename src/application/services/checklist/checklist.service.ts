@@ -15,8 +15,8 @@ export class ChecklistService {
     return this.taskRepository.findAll();
   }
 
-  async getActiveTasks(): Promise<ChecklistTask[]> {
-    return this.taskRepository.findAllActive();
+  async getActiveTasks(day?: string): Promise<ChecklistTask[]> {
+    return this.taskRepository.findAllActive(day);
   }
 
   async getTaskById(id: string): Promise<ChecklistTask> {
