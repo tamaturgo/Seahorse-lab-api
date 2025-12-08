@@ -192,7 +192,7 @@ export class FeedingScheduleService {
 
     // Criar mapas para acesso rápido
     const scheduleMap = new Map(
-      schedules.map(s => [s.tank_id, this.mapToScheduleEntity(s)])
+      schedules.map(s => [s.tank_id, s])
     );
 
     // Agrupar registros por tanque (pegar o mais recente de cada)
@@ -205,8 +205,8 @@ export class FeedingScheduleService {
 
     // Processar todos os tanques em paralelo
     const tanksNextFeeding: TankNextFeedingOutput[] = tanks.map(tank => {
-      const schedule = scheduleMap.get(tank.id);
-      const feedingTimes = schedule?.feedingTimes ?? defaultTimes;
+      const schedule = scheduleMap.get(tank.id) as any;
+      const feedingTimes = schedule?.feeding_times ?? defaultTimes;
       const lastRecord = recordsByTank.get(tank.id);
 
       const { nextFeedingTime, timeLeft, isOverdue } = this.calculateNextFeedingFromTimes(

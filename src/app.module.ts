@@ -10,6 +10,7 @@ import { SystemsModule } from './modules/systems.module';
 import { FeedingModule } from './modules/feeding.module';
 import { WaterParametersModule } from './modules/water-parameters.module';
 import { AuditModule } from './modules/audit.module';
+import { DashboardModule } from './modules/dashboard.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { AuditModule } from './modules/audit.module';
     FeedingModule,
     WaterParametersModule,
     AuditModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
