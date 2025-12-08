@@ -5,6 +5,7 @@ import { FeedingRecord } from '../../../domain/entities/feeding';
 import { EntityNotFoundException } from '../../../domain/exceptions';
 import { CreateFeedingRecordDto, FeedingRecordResponseDto } from '../../../presentation/dto/feeding';
 import type { NextFeedingOutput } from '../../dto/feeding';
+import { FeedingScheduleService } from './feeding-schedule.service';
 
 @Injectable()
 export class FeedingRecordService {
@@ -13,6 +14,8 @@ export class FeedingRecordService {
     private readonly feedingRecordRepository: IFeedingRecordRepository,
     @Inject('IFeedingScheduleRepository')
     private readonly feedingScheduleRepository: IFeedingScheduleRepository,
+    @Inject(FeedingScheduleService)
+    private readonly feedingScheduleService: FeedingScheduleService,
   ) {}
 
   async create(userId: string, createDto: CreateFeedingRecordDto): Promise<FeedingRecordResponseDto> {
@@ -27,6 +30,10 @@ export class FeedingRecordService {
     };
 
     const created = await this.feedingRecordRepository.create(feedingRecord);
+    
+    // Invalidar cache de próximas alimentações
+    this.feedingScheduleService.invalidateCache();
+    
     return this.toResponseDto(created);
   }
 
@@ -55,27 +62,24 @@ export class FeedingRecordService {
   }
 
   async getNextFeeding(): Promise<NextFeedingOutput> {
-    // Usa o último registro global para derivar o tanque e aplicar intervalo configurado (schedule ou default)
+    // Usa o último registro global para derivar o tanque e aplicar horários configurados (schedule ou default)
     const allRecords = await this.feedingRecordRepository.findAll({});
     const lastRecord = allRecords.length > 0 ? allRecords[0] : null;
 
     const now = new Date();
 
-    // Buscar intervalo configurado (se houver) a partir do tanque do último registro
-    let intervalHours = 4;
-    let startTime = '08:00:00';
+    // Buscar horários configurados a partir do tanque do último registro
+    let feedingTimes = ['08:00', '12:00', '16:00', '20:00'];
     if (lastRecord?.tankId) {
       const schedule = await this.feedingScheduleRepository.findByTankId(lastRecord.tankId);
       const defaults = await this.feedingScheduleRepository.getDefaultSettings();
-      intervalHours = schedule?.intervalHours ?? defaults?.intervalHours ?? 4;
-      startTime = schedule?.startTime ?? defaults?.startTime ?? '08:00:00';
+      feedingTimes = schedule?.feedingTimes ?? defaults?.feedingTimes ?? ['08:00', '12:00', '16:00', '20:00'];
     } else {
       const defaults = await this.feedingScheduleRepository.getDefaultSettings();
-      intervalHours = defaults?.intervalHours ?? 4;
-      startTime = defaults?.startTime ?? '08:00:00';
+      feedingTimes = defaults?.feedingTimes ?? ['08:00', '12:00', '16:00', '20:00'];
     }
 
-    const nextFeedingTime = this.calculateNextFeedingTime(lastRecord?.date, intervalHours, startTime, now);
+    const nextFeedingTime = this.calculateNextFeedingTimeFromTimes(lastRecord?.date, feedingTimes, now);
 
     const diffMs = nextFeedingTime.getTime() - now.getTime();
     const diffMins = Math.max(0, Math.floor(diffMs / 60000));
@@ -95,40 +99,39 @@ export class FeedingRecordService {
       lastFeeding: lastRecord ? this.toResponseDto(lastRecord) : null,
       nextFeedingTime: nextFeedingTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       timeLeft,
-      feedingIntervalHours: intervalHours,
+      feedingIntervalHours: 0, // Deprecated - mantido por compatibilidade
       tankId: lastRecord?.tankId,
     };
   }
 
-  private calculateNextFeedingTime(
+  private calculateNextFeedingTimeFromTimes(
     lastFeedingDate: Date | undefined | null,
-    intervalHours: number,
-    startTime: string,
+    feedingTimes: string[],
     now: Date,
   ): Date {
-    if (lastFeedingDate) {
-      const next = new Date(lastFeedingDate.getTime() + intervalHours * 60 * 60 * 1000);
-      if (next > now) return next;
-      // se passou, programe para now + intervalo
-      return new Date(now.getTime() + intervalHours * 60 * 60 * 1000);
+    // Converter horários para Date de hoje
+    const todayTimes = feedingTimes.map(time => {
+      const [hours, minutes] = time.split(':').map(Number);
+      const date = new Date(now);
+      date.setHours(hours, minutes, 0, 0);
+      return date;
+    }).sort((a, b) => a.getTime() - b.getTime());
+
+    // Encontrar próximo horário hoje
+    const nextToday = todayTimes.find(t => t > now);
+    if (nextToday) return nextToday;
+
+    // Se não encontrou hoje, usar o primeiro horário de amanhã
+    if (todayTimes.length > 0) {
+      const tomorrow = new Date(todayTimes[0]);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return tomorrow;
     }
 
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const candidate = new Date(now);
-    candidate.setHours(startHour, startMinute, 0, 0);
-    if (candidate > now) return candidate;
-    // gera horários do dia com intervalo e pega o próximo
-    const slots: Date[] = [];
-    for (let i = 0; i < 24 / intervalHours; i++) {
-      const slot = new Date(now);
-      slot.setHours(startHour + i * intervalHours, startMinute, 0, 0);
-      slots.push(slot);
-    }
-    const nextToday = slots.find((t) => t > now);
-    if (nextToday) return nextToday;
+    // Fallback: 8h de amanhã
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(startHour, startMinute, 0, 0);
+    tomorrow.setHours(8, 0, 0, 0);
     return tomorrow;
   }
 

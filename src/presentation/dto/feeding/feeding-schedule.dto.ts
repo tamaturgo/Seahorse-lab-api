@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString, IsOptional, IsBoolean, Min, Max } from 'class-validator';
+import { IsNotEmpty, IsArray, IsString, IsOptional, IsBoolean, ArrayMinSize } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateFeedingScheduleDto {
@@ -7,17 +7,16 @@ export class CreateFeedingScheduleDto {
   @IsString()
   tankId: string;
 
-  @ApiProperty({ description: 'Intervalo entre alimentações em horas', example: 4 })
+  @ApiProperty({ 
+    description: 'Horários fixos de alimentação (HH:MM)', 
+    example: ['08:00', '12:00', '16:00', '20:00'],
+    type: [String]
+  })
   @IsNotEmpty()
-  @IsNumber()
-  @Min(1)
-  @Max(24)
-  intervalHours: number;
-
-  @ApiProperty({ description: 'Horário de início (HH:MM:SS)', example: '08:00:00' })
-  @IsNotEmpty()
-  @IsString()
-  startTime: string;
+  @IsArray()
+  @ArrayMinSize(1, { message: 'Pelo menos um horário deve ser definido' })
+  @IsString({ each: true })
+  feedingTimes: string[];
 
   @ApiProperty({ description: 'Se a programação está ativa', required: false })
   @IsOptional()
@@ -31,17 +30,17 @@ export class CreateFeedingScheduleDto {
 }
 
 export class UpdateFeedingScheduleDto {
-  @ApiProperty({ description: 'Intervalo entre alimentações em horas', required: false })
+  @ApiProperty({ 
+    description: 'Horários fixos de alimentação (HH:MM)', 
+    required: false,
+    example: ['08:00', '12:00', '16:00', '20:00'],
+    type: [String]
+  })
   @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Max(24)
-  intervalHours?: number;
-
-  @ApiProperty({ description: 'Horário de início (HH:MM:SS)', required: false })
-  @IsOptional()
-  @IsString()
-  startTime?: string;
+  @IsArray()
+  @ArrayMinSize(1, { message: 'Pelo menos um horário deve ser definido' })
+  @IsString({ each: true })
+  feedingTimes?: string[];
 
   @ApiProperty({ description: 'Se a programação está ativa', required: false })
   @IsOptional()
@@ -55,24 +54,23 @@ export class UpdateFeedingScheduleDto {
 }
 
 export class UpdateDefaultFeedingSettingsDto {
-  @ApiProperty({ description: 'Intervalo padrão entre alimentações em horas', required: false })
+  @ApiProperty({ 
+    description: 'Horários padrão de alimentação (HH:MM)', 
+    required: false,
+    example: ['08:00', '12:00', '16:00', '20:00'],
+    type: [String]
+  })
   @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Max(24)
-  intervalHours?: number;
-
-  @ApiProperty({ description: 'Horário padrão de início (HH:MM:SS)', required: false })
-  @IsOptional()
-  @IsString()
-  startTime?: string;
+  @IsArray()
+  @ArrayMinSize(1, { message: 'Pelo menos um horário deve ser definido' })
+  @IsString({ each: true })
+  feedingTimes?: string[];
 }
 
 export class FeedingScheduleResponseDto {
   id: string;
   tankId: string;
-  intervalHours: number;
-  startTime: string;
+  feedingTimes: string[];
   isActive: boolean;
   notes?: string;
   createdAt: Date;
@@ -81,8 +79,7 @@ export class FeedingScheduleResponseDto {
 
 export class DefaultFeedingSettingsResponseDto {
   id: string;
-  intervalHours: number;
-  startTime: string;
+  feedingTimes: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -94,6 +91,7 @@ export class TankNextFeedingResponseDto {
   nextFeedingTime: string;
   timeLeft: string;
   feedingIntervalHours: number;
+  feedingTimes: string[];
   isOverdue: boolean;
 }
 

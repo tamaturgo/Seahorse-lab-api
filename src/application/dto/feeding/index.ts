@@ -58,15 +58,13 @@ export interface NextFeedingOutput {
 // Feeding Schedule DTOs
 export interface CreateFeedingScheduleInput {
   tankId: string;
-  intervalHours: number;
-  startTime: string;
+  feedingTimes: string[];
   isActive?: boolean;
   notes?: string;
 }
 
 export interface UpdateFeedingScheduleInput {
-  intervalHours?: number;
-  startTime?: string;
+  feedingTimes?: string[];
   isActive?: boolean;
   notes?: string;
 }
@@ -74,8 +72,7 @@ export interface UpdateFeedingScheduleInput {
 export interface FeedingScheduleOutput {
   id: string;
   tankId: string;
-  intervalHours: number;
-  startTime: string;
+  feedingTimes: string[];
   isActive: boolean;
   notes?: string;
   createdAt: Date;
@@ -84,16 +81,15 @@ export interface FeedingScheduleOutput {
 
 export interface DefaultFeedingSettingsOutput {
   id: string;
-  intervalHours: number;
-  startTime: string;
+  feedingTimes: string[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface UpdateDefaultFeedingSettingsInput {
-  intervalHours?: number;
-  startTime?: string;
+  feedingTimes?: string[];
 }
+
 
 // Next feeding por tanque
 export interface TankNextFeedingOutput {
@@ -103,6 +99,7 @@ export interface TankNextFeedingOutput {
   nextFeedingTime: string;
   timeLeft: string;
   feedingIntervalHours: number;
+  feedingTimes: string[];
   isOverdue: boolean;
 }
 

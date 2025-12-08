@@ -21,6 +21,11 @@ interface TankInfo {
   systemId: string;
 }
 
+// Cache para próximas alimentações
+let nextFeedingCache: AllTanksNextFeedingOutput | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_DURATION = 600000; // 10 minuto
+
 @Injectable()
 export class FeedingScheduleService {
   constructor(
@@ -31,6 +36,12 @@ export class FeedingScheduleService {
     @Inject('SUPABASE_CLIENT')
     private readonly supabase: any,
   ) {}
+
+  // Invalidar cache (chamado quando há mudanças)
+  public invalidateCache(): void {
+    nextFeedingCache = null;
+    cacheTimestamp = 0;
+  }
 
   // ========== Feeding Schedules (por tanque) ==========
 
@@ -54,8 +65,7 @@ export class FeedingScheduleService {
 
     const schedule = await this.scheduleRepository.create({
       tankId: input.tankId,
-      intervalHours: input.intervalHours,
-      startTime: input.startTime,
+      feedingTimes: input.feedingTimes,
       isActive: input.isActive ?? true,
       notes: input.notes,
     });
@@ -70,8 +80,7 @@ export class FeedingScheduleService {
     }
 
     const updated = await this.scheduleRepository.update(tankId, {
-      intervalHours: input.intervalHours,
-      startTime: input.startTime,
+      feedingTimes: input.feedingTimes,
       isActive: input.isActive,
       notes: input.notes,
     });
@@ -97,8 +106,7 @@ export class FeedingScheduleService {
 
   async updateDefaultSettings(input: UpdateDefaultFeedingSettingsInput): Promise<DefaultFeedingSettingsOutput> {
     const updated = await this.scheduleRepository.updateDefaultSettings({
-      intervalHours: input.intervalHours,
-      startTime: input.startTime,
+      feedingTimes: input.feedingTimes,
     });
 
     return this.toDefaultSettingsOutput(updated);
@@ -117,18 +125,16 @@ export class FeedingScheduleService {
     const schedule = await this.scheduleRepository.findByTankId(tankId);
     const defaultSettings = await this.scheduleRepository.getDefaultSettings();
 
-    const intervalHours = schedule?.intervalHours ?? defaultSettings?.intervalHours ?? 4;
-    const startTime = schedule?.startTime ?? defaultSettings?.startTime ?? '08:00:00';
+    const feedingTimes = schedule?.feedingTimes ?? defaultSettings?.feedingTimes ?? ['08:00', '12:00', '16:00', '20:00'];
 
     // Buscar último registro de alimentação do tanque
     const records = await this.feedingRecordRepository.findByTankId(tankId);
     const lastRecord = records.length > 0 ? records[0] : null;
 
     // Calcular próxima alimentação
-    const { nextFeedingTime, timeLeft, isOverdue } = this.calculateNextFeeding(
+    const { nextFeedingTime, timeLeft, isOverdue } = this.calculateNextFeedingFromTimes(
       lastRecord?.date,
-      intervalHours,
-      startTime,
+      feedingTimes,
     );
 
     return {
@@ -137,90 +143,185 @@ export class FeedingScheduleService {
       lastFeeding: lastRecord ? this.toFeedingRecordOutput(lastRecord) : null,
       nextFeedingTime,
       timeLeft,
-      feedingIntervalHours: intervalHours,
+      feedingIntervalHours: 0, // Deprecated - mantido por compatibilidade
+      feedingTimes,
       isOverdue,
     };
   }
 
   async getAllTanksNextFeeding(): Promise<AllTanksNextFeedingOutput> {
-    // Buscar todos os tanques ativos
-    const { data: tanks, error } = await this.supabase
-      .from('tanks')
-      .select('id, name, system_id')
-      .eq('status', 'active')
-      .order('name');
-
-    if (error) {
-      throw new Error(`Erro ao buscar tanques: ${error.message}`);
+    // Verificar cache
+    const now = Date.now();
+    if (nextFeedingCache && (now - cacheTimestamp) < CACHE_DURATION) {
+      return nextFeedingCache;
     }
 
-    // Buscar próxima alimentação para cada tanque
-    const tanksNextFeeding: TankNextFeedingOutput[] = [];
-    for (const tank of tanks || []) {
-      try {
-        const nextFeeding = await this.getNextFeedingForTank(tank.id);
-        tanksNextFeeding.push(nextFeeding);
-      } catch (e) {
-        // Se houver erro para um tanque específico, continuar com os outros
-        console.error(`Erro ao calcular próxima alimentação para tanque ${tank.id}:`, e);
+    // Buscar configurações padrão uma vez
+    const defaultSettings = await this.scheduleRepository.getDefaultSettings();
+    const defaultTimes = defaultSettings?.feedingTimes ?? ['08:00', '12:00', '16:00', '20:00'];
+
+    // Buscar todos os dados necessários em paralelo com uma única query otimizada
+    const [tanksResult, schedulesResult, recordsResult] = await Promise.all([
+      // Tanques ativos
+      this.supabase
+        .from('tanks')
+        .select('id, name, system_id')
+        .eq('status', 'active')
+        .order('name'),
+      
+      // Todas as programações de uma vez
+      this.supabase
+        .from('feeding_schedules')
+        .select('*'),
+      
+      // Últimos registros de cada tanque usando uma query otimizada
+      this.supabase
+        .from('feeding_records')
+        .select('tank_id, date, food, quantity, user_id, created_at, updated_at, id')
+        .order('date', { ascending: false })
+        .limit(100), // Limitar para performance
+    ]);
+
+    if (tanksResult.error) {
+      throw new Error(`Erro ao buscar tanques: ${tanksResult.error.message}`);
+    }
+
+    const tanks = tanksResult.data || [];
+    const schedules = schedulesResult.data || [];
+    const allRecords = recordsResult.data || [];
+
+    // Criar mapas para acesso rápido
+    const scheduleMap = new Map(
+      schedules.map(s => [s.tank_id, this.mapToScheduleEntity(s)])
+    );
+
+    // Agrupar registros por tanque (pegar o mais recente de cada)
+    const recordsByTank = new Map<string, any>();
+    for (const record of allRecords) {
+      if (!recordsByTank.has(record.tank_id)) {
+        recordsByTank.set(record.tank_id, record);
       }
     }
 
-    // Ordenar por tempo restante (mais urgente primeiro)
+    // Processar todos os tanques em paralelo
+    const tanksNextFeeding: TankNextFeedingOutput[] = tanks.map(tank => {
+      const schedule = scheduleMap.get(tank.id);
+      const feedingTimes = schedule?.feedingTimes ?? defaultTimes;
+      const lastRecord = recordsByTank.get(tank.id);
+
+      const { nextFeedingTime, timeLeft, isOverdue } = this.calculateNextFeedingFromTimes(
+        lastRecord?.date ? new Date(lastRecord.date) : null,
+        feedingTimes,
+      );
+
+      return {
+        tankId: tank.id,
+        tankName: tank.name,
+        lastFeeding: lastRecord ? {
+          id: lastRecord.id,
+          tankId: lastRecord.tank_id,
+          food: lastRecord.food,
+          quantity: lastRecord.quantity,
+          date: lastRecord.date,
+          userId: lastRecord.user_id,
+          createdAt: lastRecord.created_at,
+          updatedAt: lastRecord.updated_at,
+        } : null,
+        nextFeedingTime,
+        timeLeft,
+        feedingIntervalHours: 0, // Deprecated
+        feedingTimes,
+        isOverdue,
+      };
+    });
+
+    // Ordenar por urgência
     tanksNextFeeding.sort((a, b) => {
       if (a.isOverdue && !b.isOverdue) return -1;
       if (!a.isOverdue && b.isOverdue) return 1;
       return 0;
     });
 
-    const defaultSettings = await this.scheduleRepository.getDefaultSettings();
-
-    return {
+    const result = {
       tanks: tanksNextFeeding,
       defaultSettings: defaultSettings ? this.toDefaultSettingsOutput(defaultSettings) : null,
+    };
+
+    // Atualizar cache
+    nextFeedingCache = result;
+    cacheTimestamp = now;
+
+    return result;
+  }
+
+  private mapToScheduleEntity(data: any): FeedingSchedule {
+    return {
+      id: data.id,
+      tankId: data.tank_id,
+      feedingTimes: data.feeding_times,
+      isActive: data.is_active,
+      notes: data.notes,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
     };
   }
 
   // ========== Private Methods ==========
 
-  private calculateNextFeeding(
+  private calculateNextFeedingFromTimes(
     lastFeedingDate: Date | undefined | null,
-    intervalHours: number,
-    startTime: string,
+    feedingTimes: string[],
   ): { nextFeedingTime: string; timeLeft: string; isOverdue: boolean } {
     const now = new Date();
-    let nextFeedingTime: Date;
+    let nextFeedingTime: Date | null = null;
     let isOverdue = false;
 
-    if (lastFeedingDate) {
-      // Calcular próxima alimentação baseada no último registro + intervalo
-      const lastDate = new Date(lastFeedingDate);
-      nextFeedingTime = new Date(lastDate.getTime() + intervalHours * 60 * 60 * 1000);
+    // Converter horários de string para Date de hoje
+    const todayTimes = feedingTimes.map(time => {
+      const [hours, minutes] = time.split(':').map(Number);
+      const date = new Date(now);
+      date.setHours(hours, minutes, 0, 0);
+      return date;
+    }).sort((a, b) => a.getTime() - b.getTime());
 
-      // Se já passou, marcar como atrasado
-      if (nextFeedingTime < now) {
-        isOverdue = true;
-      }
-    } else {
-      // Se não há registros, usar horários baseados no startTime
-      const [startHour, startMinute] = startTime.split(':').map(Number);
-      const feedingTimes: Date[] = [];
+    // Encontrar próximo horário hoje
+    nextFeedingTime = todayTimes.find(t => t > now) || null;
 
-      // Gerar todos os horários de alimentação do dia
-      for (let i = 0; i < 24 / intervalHours; i++) {
-        const feedingTime = new Date(now);
-        feedingTime.setHours(startHour + i * intervalHours, startMinute, 0, 0);
-        feedingTimes.push(feedingTime);
-      }
+    // Se não encontrou hoje, usar o primeiro horário de amanhã
+    if (!nextFeedingTime && todayTimes.length > 0) {
+      nextFeedingTime = new Date(todayTimes[0]);
+      nextFeedingTime.setDate(nextFeedingTime.getDate() + 1);
+    }
 
-      // Encontrar o próximo horário
-      nextFeedingTime = feedingTimes.find((t) => t > now) || feedingTimes[0];
-
-      // Se não encontrou hoje, usar o primeiro do dia seguinte
+    // Se não há horários definidos, usar padrão
+    if (!nextFeedingTime) {
+      nextFeedingTime = new Date(now);
+      nextFeedingTime.setHours(8, 0, 0, 0);
       if (nextFeedingTime <= now) {
-        nextFeedingTime = new Date(now);
         nextFeedingTime.setDate(nextFeedingTime.getDate() + 1);
-        nextFeedingTime.setHours(startHour, startMinute, 0, 0);
+      }
+    }
+
+    // Verificar se está atrasado (se houve alimentação anterior)
+    if (lastFeedingDate) {
+      const lastDate = new Date(lastFeedingDate);
+      
+      // Encontrar qual deveria ser o próximo horário depois da última alimentação
+      const expectedNextTimes = feedingTimes.map(time => {
+        const [hours, minutes] = time.split(':').map(Number);
+        const date = new Date(lastDate);
+        date.setHours(hours, minutes, 0, 0);
+        
+        // Se o horário é antes da última alimentação, considerar para o próximo dia
+        if (date <= lastDate) {
+          date.setDate(date.getDate() + 1);
+        }
+        return date;
+      }).sort((a, b) => a.getTime() - b.getTime());
+
+      const expectedNext = expectedNextTimes[0];
+      if (expectedNext && now > expectedNext) {
+        isOverdue = true;
       }
     }
 
@@ -282,8 +383,7 @@ export class FeedingScheduleService {
     return {
       id: schedule.id,
       tankId: schedule.tankId,
-      intervalHours: schedule.intervalHours,
-      startTime: schedule.startTime,
+      feedingTimes: schedule.feedingTimes,
       isActive: schedule.isActive,
       notes: schedule.notes,
       createdAt: schedule.createdAt,
@@ -294,8 +394,7 @@ export class FeedingScheduleService {
   private toDefaultSettingsOutput(settings: DefaultFeedingSettings): DefaultFeedingSettingsOutput {
     return {
       id: settings.id,
-      intervalHours: settings.intervalHours,
-      startTime: settings.startTime,
+      feedingTimes: settings.feedingTimes,
       createdAt: settings.createdAt,
       updatedAt: settings.updatedAt,
     };

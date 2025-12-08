@@ -53,8 +53,7 @@ export class FeedingScheduleRepository implements IFeedingScheduleRepository {
       .from('feeding_schedules')
       .insert({
         tank_id: schedule.tankId,
-        interval_hours: schedule.intervalHours,
-        start_time: schedule.startTime,
+        feeding_times: schedule.feedingTimes,
         is_active: schedule.isActive ?? true,
         notes: schedule.notes,
       })
@@ -69,8 +68,7 @@ export class FeedingScheduleRepository implements IFeedingScheduleRepository {
   async update(tankId: string, schedule: Partial<FeedingSchedule>): Promise<FeedingSchedule> {
     const updateData: Record<string, any> = {};
     
-    if (schedule.intervalHours !== undefined) updateData.interval_hours = schedule.intervalHours;
-    if (schedule.startTime !== undefined) updateData.start_time = schedule.startTime;
+    if (schedule.feedingTimes !== undefined) updateData.feeding_times = schedule.feedingTimes;
     if (schedule.isActive !== undefined) updateData.is_active = schedule.isActive;
     if (schedule.notes !== undefined) updateData.notes = schedule.notes;
 
@@ -115,8 +113,7 @@ export class FeedingScheduleRepository implements IFeedingScheduleRepository {
     const existing = await this.getDefaultSettings();
     
     const updateData: Record<string, any> = {};
-    if (settings.intervalHours !== undefined) updateData.interval_hours = settings.intervalHours;
-    if (settings.startTime !== undefined) updateData.start_time = settings.startTime;
+    if (settings.feedingTimes !== undefined) updateData.feeding_times = settings.feedingTimes;
 
     let data: any;
     let error: any;
@@ -137,8 +134,7 @@ export class FeedingScheduleRepository implements IFeedingScheduleRepository {
       const result = await this.supabase
         .from('default_feeding_settings')
         .insert({
-          interval_hours: settings.intervalHours ?? 4,
-          start_time: settings.startTime ?? '08:00:00',
+          feeding_times: settings.feedingTimes ?? ['08:00', '12:00', '16:00', '20:00'],
         })
         .select()
         .single();
@@ -156,8 +152,7 @@ export class FeedingScheduleRepository implements IFeedingScheduleRepository {
     return {
       id: data.id,
       tankId: data.tank_id,
-      intervalHours: data.interval_hours,
-      startTime: data.start_time,
+      feedingTimes: data.feeding_times,
       isActive: data.is_active,
       notes: data.notes,
       createdAt: new Date(data.created_at),
@@ -168,8 +163,7 @@ export class FeedingScheduleRepository implements IFeedingScheduleRepository {
   private mapToDefaultSettingsEntity(data: any): DefaultFeedingSettings {
     return {
       id: data.id,
-      intervalHours: data.interval_hours,
-      startTime: data.start_time,
+      feedingTimes: data.feeding_times,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
     };
